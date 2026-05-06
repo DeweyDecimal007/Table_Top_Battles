@@ -1,0 +1,1 @@
+# Empty file - makes wargame_assistant a proper Python package
