@@ -1,87 +1,23 @@
 """
 tactical/islands/tarawa.py
-Stable Tarawa - restored good coastline + strict Road 2 + Road 5 overlays on the exact two hexes
+Static 5x5 test map for Tarawa using your new short naming convention
 """
 
 from tactical.base import TacticalMapBase
-import random
 
 class TarawaTacticalMap(TacticalMapBase):
     def __init__(self):
-        super().__init__("Tarawa", grid_width=24, grid_height=24)
+        super().__init__("Tarawa", grid_width=5, grid_height=5)
 
     def generate_base_layout(self):
-        random.seed(42)
-
-        # 1. Full deep water base
-        for col in range(24):
-            for row in range(24):
-                self.grid[(col, row)] = "deepsea002"
-
-        # 2. Solid central land core (Dunes) - restored good shape
-        land_hexes = []
-        for col in range(5, 20):
-            for row in range(6, 19):
-                dist = ((col - 12)**2 + (row - 12)**2)**0.5
-                if dist < 9.3 and random.random() < 0.92:
-                    self.grid[(col, row)] = "dunes001"
-                    land_hexes.append((col, row))
-
-        # Light interior variety
-        for col, row in land_hexes:
-            if random.random() < 0.22:
-                self.grid[(col, row)] = "lightjungle005"
-            elif random.random() < 0.09:
-                self.grid[(col, row)] = "swamp001"
-
-        # Water buffer adjacent to all Dune hexes
-        for col, row in list(land_hexes):
-            for dc, dr in [(1,0),(-1,0),(0,1),(0,-1),(1,-1),(-1,1)]:
-                nc, nr = col + dc, row + dr
-                if (nc, nr) in self.grid and self.grid.get((nc, nr)) == "deepsea002":
-                    self.grid[(nc, nr)] = "water001"
-
-        # Centers
-        village_pos = (12, 13)
-        airfield_pos = (15, 11)
-        self.grid[village_pos] = "village001"
-        self.grid[airfield_pos] = "airfield"
-
-        # STRICT ROAD OVERLAYS - only on the two hexes between village and airfield
-        self._place_road_overlays(village_pos, airfield_pos)
-
-        # Outer water buffer
-        for col in range(24):
-            for row in [0, 1, 22, 23]:
-                if self.grid.get((col, row)) in ["water001", "dunes001"]:
-                    self.grid[(col, row)] = "deepsea002"
-        for row in range(24):
-            for col in [0, 1, 22, 23]:
-                if self.grid.get((col, row)) in ["water001", "dunes001"]:
-                    self.grid[(col, row)] = "deepsea002"
-
-        print("✅ Tarawa - stable coastline + strict Road 2 + Road 5 overlays on the two path hexes")
-
-    def _place_road_overlays(self, start, end):
-        """Place BOTH Road 2 and Road 5 on each of the two hexes between centers"""
-        col, row = start
-        target_col, target_row = end
-
-        # First hex on path
-        self.overlays_grid[(col, row)] = "road 2"
-        self.overlays_grid[(col, row)] = "road 5"   # both overlays on same hex
-
-        # Move one step
-        if abs(col - target_col) > abs(row - target_row):
-            col += 1 if col < target_col else -1
-        else:
-            row += 1 if row < target_row else -1
-
-        # Second hex on path
-        self.overlays_grid[(col, row)] = "road 2"
-        self.overlays_grid[(col, row)] = "road 5"   # both overlays on same hex
-
-        print("   → Both Road 2 and Road 5 placed on the two path hexes")
+        self.grid = {
+            (0,0): "wds", (1,0): "wds", (2,0): "w2", (3,0): "snm3", (4,0): "tm",
+            (0,1): "w4", (1,1): "w3", (2,1): "w1", (3,1): "tm", (4,1): "h3",
+            (0,2): "dn1", (1,2): "dn2", (2,2): "of", (3,2): "h4", (4,2): "h5",
+            (0,3): "af", (1,3): "afd", (2,3): "tree1", (3,3): "mud", (4,3): "sv2",
+            (0,4): "yd4", (1,4): "tree1", (2,4): "lm", (3,4): "sv1", (4,4): "t3",
+        }
+        print("✅ 5x5 Tarawa test grid loaded with short names")
 
 if __name__ == "__main__":
     map_instance = TarawaTacticalMap()
