@@ -6,7 +6,8 @@ FINAL CLEAN VERSION - Duplicate Fiji removed, everything else locked
 import pygame
 import random
 import math
-import sys
+
+from tactical.island_registry import get_tactical_map
 
 
 class StrategicMap:
@@ -251,8 +252,40 @@ class StrategicMap:
 
         pygame.display.flip()
 
+    def tile_at_screen_pos(self, pos):
+        click_x, click_y = pos
+        closest_coord = None
+        closest_distance = self.hex_radius
+
+        for coord, tile in self.tiles.items():
+            tile_x = tile["pos"][0] + self.cam_x
+            tile_y = tile["pos"][1] + self.cam_y
+            distance = math.hypot(click_x - tile_x, click_y - tile_y)
+            if distance <= closest_distance:
+                closest_coord = coord
+                closest_distance = distance
+
+        return closest_coord
+
     def handle_click(self, pos):
-        print(f"📍 Clicked at {pos} → tactical map coming soon!")
+        coord = self.tile_at_screen_pos(pos)
+        if coord is None:
+            print(f"Clicked at {pos}; no strategic hex selected.")
+            return
+
+        tile = self.tiles[coord]
+        island_name = tile.get("name")
+        if not island_name:
+            print(f"Clicked {coord}; no island tactical map at this hex.")
+            return
+
+        try:
+            tactical_map = get_tactical_map(island_name)
+        except ValueError:
+            print(f"{island_name} selected at {coord}; no tactical map registered yet.")
+            return
+
+        tactical_map.run()
 
     def run(self):
         while self.running:
@@ -286,7 +319,6 @@ class StrategicMap:
             self.clock.tick(60)
 
         pygame.quit()
-        sys.exit()
 
 
 if __name__ == "__main__":
