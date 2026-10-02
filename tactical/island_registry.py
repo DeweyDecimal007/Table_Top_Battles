@@ -3,9 +3,11 @@ tactical/island_registry.py
 Registry of all tactical island maps.
 """
 
+from tactical.islands.bora_bora import BoraBoraTacticalMap
 from tactical.islands.tarawa import TarawaTacticalMap
 
 ISLAND_MAPS = {
+    "Bora Bora": BoraBoraTacticalMap,
     "Tarawa": TarawaTacticalMap,
     # Add more islands here later:
     # "Industrial Hub": IndustrialHubTacticalMap,
