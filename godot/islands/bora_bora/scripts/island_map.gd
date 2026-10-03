@@ -136,11 +136,21 @@ func _build_ui() -> void:
 	box.add_child(_title("Bora Bora"))
 	box.add_child(_body("Tactical island. Almost-atoll: volcanic core west, lagoon, motu ring, Teavanui Pass."))
 	box.add_child(_body("Hex = 5 km = 1 hour walking on beach."))
+	box.add_child(_heading("Water layer"))
+	var water_row := HBoxContainer.new()
+	water_row.add_theme_constant_override("separation", 6)
+	box.add_child(water_row)
+	for item in [["surface", "Surface"], ["water_shallow", "Shallow"], ["water_moderate", "Moderate"], ["water_deep", "Deep"]]:
+		var button := Button.new()
+		button.text = item[1]
+		button.pressed.connect(_set_layer.bind(item[0]))
+		water_row.add_child(button)
+		layer_buttons[item[0]] = button
 	box.add_child(_heading("Air layer"))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	box.add_child(row)
-	for item in [["surface", "Surface"], ["tactical", "Tactical"], ["strategic_1", "Strategic 1"], ["strategic_2", "Strategic 2"]]:
+	for item in [["tactical", "Tactical"], ["strategic_1", "Strategic 1"], ["strategic_2", "Strategic 2"]]:
 		var button := Button.new()
 		button.text = item[1]
 		button.pressed.connect(_set_layer.bind(item[0]))
@@ -148,7 +158,7 @@ func _build_ui() -> void:
 		layer_buttons[item[0]] = button
 	_mark_layer_button()
 	box.add_child(_heading("Legend"))
-	box.add_child(_body("Water: shallow, moderate, deep.\nLand: beach, hills, highlands, small mountain, impassable.\nTactical air is the column to 2500 m. Two strategic bands sit above the peaks."))
+	box.add_child(_body("Water is a stack in the same hex. Deep has shallow and moderate above it. Moderate has shallow above it. Shallow stays one band.\nLand: beach, hills, highlands, small mountain, impassable.\nTactical air is the column to 2500 m. Two strategic bands sit above the peaks."))
 	box.add_child(_heading("Settlement"))
 	box.add_child(_body("Vaitape village and fishing dock. Faanui hamlet only. Fed by lagoon fish, taro, breadfruit, and coconut."))
 	box.add_child(_heading("Resources"))
@@ -201,7 +211,21 @@ func _mark_layer_button() -> void:
 
 func _color_for(hex: Dictionary) -> Color:
 	var terrain := str(hex["terrain"])
-	if layer_name == "surface":
+	if layer_name == "surface" or layer_name == "water_shallow":
+		if _has_water_band(terrain, "shallow"):
+			return TERRAIN_COLOR["shallow"]
+		return TERRAIN_COLOR.get(terrain, Color.GRAY)
+	if layer_name == "water_moderate":
+		if _has_water_band(terrain, "moderate"):
+			return TERRAIN_COLOR["moderate"]
+		if _is_water(terrain):
+			return Color("1c2430")
+		return TERRAIN_COLOR.get(terrain, Color.GRAY)
+	if layer_name == "water_deep":
+		if _has_water_band(terrain, "deep"):
+			return TERRAIN_COLOR["deep"]
+		if _is_water(terrain):
+			return Color("1c2430")
 		return TERRAIN_COLOR.get(terrain, Color.GRAY)
 	if layer_name == "tactical":
 		if terrain == "impassable_mountain":
@@ -210,6 +234,24 @@ func _color_for(hex: Dictionary) -> Color:
 	if layer_name == "strategic_1":
 		return Color("a8c5e2")
 	return Color("d7e3f0")
+
+
+func _is_water(terrain: String) -> bool:
+	return terrain == "shallow" or terrain == "moderate" or terrain == "deep"
+
+
+func _water_bands(terrain: String) -> Array:
+	if terrain == "deep":
+		return ["shallow", "moderate", "deep"]
+	if terrain == "moderate":
+		return ["shallow", "moderate"]
+	if terrain == "shallow":
+		return ["shallow"]
+	return []
+
+
+func _has_water_band(terrain: String, band: String) -> bool:
+	return band in _water_bands(terrain)
 
 
 func _select_hex(key: String) -> void:
@@ -230,15 +272,35 @@ func _show_hex(hex: Dictionary) -> void:
 			names.append(str(item))
 		feature_text = ", ".join(names)
 	var air := _air_text(terrain)
-	inspector.text = "q %s, r %s\n%s\n%s\n%s\nWalk: %s\nFeatures: %s\n\n%s" % [
+	var water := _water_text(terrain)
+	inspector.text = "q %s, r %s\n%s\n%s\n%s\nWalk: %s\nFeatures: %s\n\n%s\n\n%s" % [
 		hex["q"], hex["r"],
 		str(hex.get("name", "")) if str(hex.get("name", "")) != "" else "Unnamed",
 		info.get("label", terrain),
 		info.get("vertical", ""),
 		info.get("hours", ""),
 		feature_text,
+		water,
 		air,
 	]
+
+
+func _water_text(terrain: String) -> String:
+	var bands := _water_bands(terrain)
+	if bands.is_empty():
+		return "No water column. Land hex."
+	var stack := "Water stack, top to bottom: %s." % ", ".join(PackedStringArray(bands))
+	if layer_name == "water_moderate" and not _has_water_band(terrain, "moderate"):
+		return stack + " No moderate band in this hex."
+	if layer_name == "water_deep" and not _has_water_band(terrain, "deep"):
+		return stack + " No deep band in this hex."
+	if layer_name == "water_shallow" or layer_name == "surface":
+		return stack + " Viewing shallow, 0 to 10 m, the surface of this hex."
+	if layer_name == "water_moderate":
+		return stack + " Viewing moderate, 10 to 40 m."
+	if layer_name == "water_deep":
+		return stack + " Viewing deep, below 40 m."
+	return stack
 
 
 func _air_text(terrain: String) -> String:

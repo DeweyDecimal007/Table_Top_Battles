@@ -23,7 +23,7 @@ Bora Bora, Society Islands. An almost-atoll: a volcanic island on the west side 
 
 ## Vertical
 
-Water, three bands only: shallow 0-10 m, moderate 10-40 m, deep below 40 m.
+Water is a stack in the same hex, switched like the air layers. Shallow is 0-10 m and sits on every water hex. Moderate is 10-40 m and sits under shallow on moderate and deep hexes. Deep is below 40 m and sits under those two bands only on deep hexes. A shallow hex has no deeper band.
 
 Land: beach, hills, highlands, small mountain, impassable mountain.
 

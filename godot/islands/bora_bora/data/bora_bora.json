@@ -30,9 +30,9 @@
     },
     "vertical": {
       "water": [
-        "shallow 0-10 m",
-        "moderate 10-40 m",
-        "deep below 40 m"
+        "shallow 0-10 m, top band on every water hex",
+        "moderate 10-40 m, under shallow on moderate and deep hexes",
+        "deep below 40 m, under shallow and moderate on deep hexes only"
       ],
       "land": [
         "beach 0-20 m",
@@ -45,6 +45,20 @@
         "tactical": "surface to 2500 m, around all terrain; blocked only in the Otemanu column",
         "strategic_1": "2500-7500 m, above impassable peaks",
         "strategic_2": "7500-12000 m"
+      },
+      "water_stack": {
+        "deep": [
+          "shallow",
+          "moderate",
+          "deep"
+        ],
+        "moderate": [
+          "shallow",
+          "moderate"
+        ],
+        "shallow": [
+          "shallow"
+        ]
       }
     },
     "settlement": {
