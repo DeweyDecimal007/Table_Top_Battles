@@ -88,26 +88,15 @@ func _build_hexes() -> void:
 		node.position = _axial_to_pixel(int(hex["q"]), int(hex["r"]))
 		node.name = key
 		layer.add_child(node)
-		var poly := Polygon2D.new()
-		poly.polygon = _hex_points(HEX_SIZE - 1.0)
-		poly.color = TERRAIN_COLOR.get(hex["terrain"], Color.GRAY)
-		node.add_child(poly)
-		polygons[key] = poly
-		var outline := Line2D.new()
-		var pts := _hex_points(HEX_SIZE - 1.0)
-		pts.append(pts[0])
-		outline.points = pts
-		outline.width = 1.0
-		outline.default_color = Color(0.08, 0.1, 0.12, 0.85)
-		node.add_child(outline)
 		if str(hex.get("name", "")) != "":
-			node.add_child(_tag(str(hex["name"]), Vector2(-22, -10), 11, Color("fff8e6")))
+			node.add_child(_tag(str(hex["name"]), Vector2(-22, -18), 11, Color("fff8e6")))
 		var features: Array = hex.get("features", [])
 		if features.size() > 0:
 			var names: PackedStringArray = []
 			for item in features:
 				names.append(str(FEATURE_LABEL.get(item, item)))
-			node.add_child(_tag(", ".join(names), Vector2(-22, 6), 9, Color("1b140c")))
+			node.add_child(_tag(", ".join(names), Vector2(-22, 4), 9, Color("1b140c")))
+	queue_redraw()
 
 
 func _tag(text: String, pos: Vector2, size: int, color: Color) -> Label:
@@ -198,13 +187,77 @@ func _body(text: String) -> Label:
 func _set_layer(next_layer: String) -> void:
 	layer_name = next_layer
 	_mark_layer_button()
-	for key in polygons:
-		polygons[key].color = _color_for(hex_by_key[key])
+	queue_redraw()
 	if selected_key != "":
 		_show_hex(hex_by_key[selected_key])
 
 
 func _mark_layer_button() -> void:
+	for key in layer_buttons:
+		layer_buttons[key].modulate = Color(1, 1, 1) if key == layer_name else Color(0.75, 0.75, 0.75)
+
+
+func _draw() -> void:
+	var ordered: Array = hex_by_key.values()
+	ordered.sort_custom(func(a, b): return int(a["r"]) < int(b["r"]))
+	for hex in ordered:
+		_draw_raised_hex(_axial_to_pixel(int(hex["q"]), int(hex["r"])), _color_for(hex), _lift_for(hex))
+
+
+func _lift_for(hex: Dictionary) -> float:
+	var terrain := str(hex["terrain"])
+	if layer_name.begins_with("strategic"):
+		return 8.0
+	if layer_name == "tactical":
+		return 18.0 if terrain == "impassable_mountain" else 12.0
+	match terrain:
+		"deep":
+			return 8.0
+		"moderate":
+			return 12.0
+		"shallow":
+			return 16.0
+		"beach":
+			return 20.0
+		"hills":
+			return 28.0
+		"highlands":
+			return 36.0
+		"small_mountain":
+			return 46.0
+		"impassable_mountain":
+			return 58.0
+	return 16.0
+
+
+func _draw_raised_hex(center: Vector2, top_color: Color, lift: float) -> void:
+	var top := _hex_points(HEX_SIZE - 1.5)
+	var shade := top_color.darkened(0.28)
+	var lit := top_color.lightened(0.16)
+	draw_colored_polygon(_offset(top, center + Vector2(5, 5)), Color(0, 0, 0, 0.28))
+	for i in [2, 3, 4]:
+		var a: Vector2 = top[i]
+		var b: Vector2 = top[(i + 1) % 6]
+		var face := PackedVector2Array([
+			center + b,
+			center + a,
+			center + a + Vector2(3, -lift),
+			center + b + Vector2(3, -lift),
+		])
+		draw_colored_polygon(face, shade if i == 3 else shade.lightened(0.08))
+	var raised := _offset(top, center + Vector2(3, -lift))
+	draw_colored_polygon(raised, top_color)
+	draw_colored_polygon(_offset(_hex_points(HEX_SIZE * 0.62), center + Vector2(2, -lift - 1)), lit)
+	var rim := raised.duplicate()
+	rim.append(raised[0])
+	draw_polyline(rim, top_color.darkened(0.4), 1.2)
+
+
+func _offset(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for pt in pts:
+		out.append(pt + by)
+	return out
 	for key in layer_buttons:
 		layer_buttons[key].modulate = Color(1, 1, 1) if key == layer_name else Color(0.75, 0.75, 0.75)
 

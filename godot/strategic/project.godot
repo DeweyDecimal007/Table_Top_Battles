@@ -1,0 +1,24 @@
+; Engine configuration file.
+; Blue Horizon strategic theater for Table_Top_Battles.
+
+config_version=5
+
+[application]
+
+config/name="Blue Horizon Strategic Map"
+config/description="Strategic theater with air, surface, and below-water layers."
+run/main_scene="res://Strategic_Map.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=1000
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.02, 0.06, 0.12, 1)

@@ -33,6 +33,7 @@ class StrategicMap:
         self.last_mouse_pos = (0, 0)
 
         self.tiles = {}
+        self.layer = "surface"
         self.generate_theater()
 
     def generate_theater(self):
@@ -213,43 +214,69 @@ class StrategicMap:
             points.append((x, y))
         return points
 
+    def color_for(self, tile):
+        terrain = tile["terrain"]
+        if self.layer == "air":
+            return (142, 202, 230)
+        if self.layer == "below":
+            if terrain == "land":
+                return (28, 36, 48)
+            if terrain == "shallow":
+                return (27, 108, 168)
+            return (8, 30, 56)
+        if tile.get("industrial"):
+            return (169, 169, 169)
+        if terrain == "land":
+            return (34, 139, 34)
+        if terrain == "shallow":
+            return (79, 195, 216)
+        return (8, 38, 74)
+
+    def draw_raised(self, center, color, lift, border):
+        top = self.hexagon_points(0, 0, self.hex_radius - 1)
+        shadow = [(center[0] + px + 3, center[1] + py + 3) for px, py in top]
+        pygame.draw.polygon(self.screen, (0, 0, 0), shadow)
+        shade = tuple(max(0, c - 50) for c in color)
+        for i in (2, 3, 4):
+            a = top[i]
+            b = top[(i + 1) % 6]
+            face = [
+                (center[0] + b[0], center[1] + b[1]),
+                (center[0] + a[0], center[1] + a[1]),
+                (center[0] + a[0] + 2, center[1] + a[1] - lift),
+                (center[0] + b[0] + 2, center[1] + b[1] - lift),
+            ]
+            pygame.draw.polygon(self.screen, shade, face)
+        raised = [(center[0] + px + 2, center[1] + py - lift) for px, py in top]
+        pygame.draw.polygon(self.screen, color, raised)
+        lit = tuple(min(255, c + 28) for c in color)
+        cap = self.hexagon_points(center[0] + 1, center[1] - lift - 1, self.hex_radius * 0.55)
+        pygame.draw.polygon(self.screen, lit, cap)
+        pygame.draw.polygon(self.screen, border, raised, 2)
+
     def draw(self):
         self.screen.fill((5, 15, 45))
-        for (col, row), tile in self.tiles.items():
+        ordered = sorted(self.tiles.items(), key=lambda item: item[0][1])
+        for (col, row), tile in ordered:
             x = tile["pos"][0] + self.cam_x
             y = tile["pos"][1] + self.cam_y
-
-            if tile.get("industrial"):
-                base_color = (169, 169, 169)
-            elif tile["terrain"] == "mountain":
-                base_color = (139, 69, 19)
-            elif tile["terrain"] == "sand":
-                base_color = (238, 220, 130)
-            elif tile["terrain"] == "land":
-                base_color = (34, 139, 34)
-            elif tile["terrain"] == "shallow":
-                base_color = (100, 180, 255)
-            else:
-                base_color = (0, 35, 70)
-
+            if x < -40 or y < -40 or x > self.WIDTH + 40 or y > self.HEIGHT + 40:
+                continue
             border_color = (220, 40, 40) if tile["owner"] == "Red" else \
                            (30, 120, 255) if tile["owner"] == "Blue" else (220, 220, 230)
-
-            points = self.hexagon_points(x, y, self.hex_radius)
-            pygame.draw.polygon(self.screen, base_color, points)
-            pygame.draw.polygon(self.screen, border_color, points, 3)
-
+            lift = 14 if tile["terrain"] == "land" else 10 if tile["terrain"] == "shallow" else 7
+            if self.layer == "air":
+                lift = 9
+            self.draw_raised((x, y), self.color_for(tile), lift, border_color)
             if tile.get("infrastructure"):
-                label = self.font.render("★", True, (255, 255, 80))
-                self.screen.blit(label, (x - 8, y - 12))
-
+                label = self.font.render("*", True, (255, 255, 80))
+                self.screen.blit(label, (x - 4, y - lift - 8))
             if tile.get("name"):
                 text = self.name_font.render(tile["name"], True, (255, 255, 220))
-                self.screen.blit(text, (x - text.get_width()//2, y - 28))
-
-            coord_text = self.coord_font.render(f"{col},{row}", True, (180, 180, 200))
-            self.screen.blit(coord_text, (x - coord_text.get_width()//2, y + 8))
-
+                self.screen.blit(text, (x - text.get_width() // 2, y - lift - 18))
+        layer_label = {"air": "AIR", "surface": "SURFACE", "below": "BELOW WATER"}[self.layer]
+        banner = self.font.render(f"{layer_label}   1 air   2 surface   3 below   right-click island", True, (236, 232, 214))
+        self.screen.blit(banner, (16, 12))
         pygame.display.flip()
 
     def tile_at_screen_pos(self, pos):
@@ -287,7 +314,27 @@ class StrategicMap:
 
         tactical_map.run()
 
+    def open_godot_theater(self):
+        from pathlib import Path
+        from tactical.godot_map import GodotTacticalMap
+
+        project = Path(__file__).resolve().parents[1] / "godot" / "strategic"
+        if not (project / "project.godot").exists():
+            return False
+        try:
+            GodotTacticalMap(
+                "Blue Horizon",
+                project,
+                "res://Strategic_Map.tscn",
+            ).run()
+        except (FileNotFoundError, RuntimeError) as exc:
+            print(f"Godot strategic map unavailable, using pygame layers: {exc}")
+            return False
+        return True
+
     def run(self):
+        if self.open_godot_theater():
+            return
         while self.running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -308,6 +355,12 @@ class StrategicMap:
                     self.last_mouse_pos = event.pos
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
                     self.handle_click(event.pos)
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_1:
+                    self.layer = "air"
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_2:
+                    self.layer = "surface"
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_3:
+                    self.layer = "below"
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_F11:
                     self.fullscreen = not self.fullscreen
                     if self.fullscreen:
